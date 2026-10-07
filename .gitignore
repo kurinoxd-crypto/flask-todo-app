@@ -6,3 +6,6 @@ app.pyc
 # Generated at runtime — never commit these
 selenium_report.html
 test_results.json
+
+# Local demo script — not part of CI
+demo_selenium.py
