@@ -23,7 +23,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # ── Config ────────────────────────────────────────────────────────────────────
 APP_URL = os.environ.get("APP_URL", "http://localhost:5000")
-HEADLESS = os.environ.get("HEADLESS", "true").lower() == "true"
+HEADLESS = os.environ.get("HEADLESS", "false").lower() == "true"  # visible by default for demo
 
 # ChromeDriver placed here manually to avoid webdriver-manager SYSTEM account bug
 # Falls back to PATH if the file doesn't exist (e.g. on Linux CI)
@@ -64,6 +64,7 @@ def go_home(driver):
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.TAG_NAME, "h1"))
     )
+    time.sleep(0.8)  # brief pause so the demo is watchable
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
