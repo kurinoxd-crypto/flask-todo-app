@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: flask-app
-        image: sanjeevkt720/jenkins-flask-app
+        # Jenkins will replace this line with the real IMAGE_TAG at deploy time
+        image: kurinoxd/flask-todo-app:latest
         ports:
         - containerPort: 5000
         resources:
@@ -26,3 +27,16 @@ spec:
           requests:
             cpu: "0.5"
             memory: "200Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: flask-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000
