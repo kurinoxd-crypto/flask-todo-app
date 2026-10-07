@@ -7,7 +7,12 @@ import time
 import pytest
 
 _results = []
-_start_times = {}
+_session_start = None
+
+
+def pytest_sessionstart(session):
+    global _session_start
+    _session_start = time.time()
 
 
 def pytest_runtest_logreport(report):
@@ -19,7 +24,7 @@ def pytest_runtest_logreport(report):
         status = "PASSED" if report.passed else "FAILED"
         error  = ""
         if report.failed and report.longrepr:
-            error = str(report.longrepr)[-600:]  # last 600 chars of traceback
+            error = str(report.longrepr)[-600:]
 
         _results.append({
             "name":     test_name,
@@ -31,5 +36,9 @@ def pytest_runtest_logreport(report):
 
 
 def pytest_sessionfinish(session, exitstatus):
+    total_duration = round(time.time() - _session_start, 2) if _session_start else 0
     with open("test_results.json", "w") as f:
-        json.dump(_results, f, indent=2)
+        json.dump({
+            "total_duration": total_duration,
+            "results": _results
+        }, f, indent=2)

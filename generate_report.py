@@ -14,16 +14,21 @@ REPORT_FILE  = "selenium_report.html"
 
 def load_results():
     if not os.path.exists(RESULTS_FILE):
-        return []
+        return [], 0
     with open(RESULTS_FILE) as f:
-        return json.load(f)
+        data = json.load(f)
+    # Support both new format {total_duration, results} and legacy flat list
+    if isinstance(data, dict):
+        return data.get("results", []), data.get("total_duration", 0)
+    else:
+        results = data
+        return results, sum(r["duration"] for r in results)
 
 
-def build_html(results):
+def build_html(results, total_duration):
     total    = len(results)
     passed   = sum(1 for r in results if r["status"] == "PASSED")
     failed   = sum(1 for r in results if r["status"] == "FAILED")
-    duration = sum(r["duration"] for r in results)
     pct      = round((passed / total * 100) if total else 0, 1)
     now      = datetime.now().strftime("%d %b %Y  %H:%M:%S")
 
@@ -346,7 +351,7 @@ def build_html(results):
         <div class="stat-icon time">⏱</div>
         <div class="stat-info">
           <div class="stat-label">Duration</div>
-          <div class="stat-value">{duration:.1f}s</div>
+          <div class="stat-value">{total_duration:.1f}s</div>
           <div class="stat-desc">Total execution time</div>
         </div>
       </div>
@@ -417,7 +422,7 @@ def build_html(results):
           </div>
           <div class="donut-stat">
             <span class="donut-stat-label">Duration</span>
-            <span class="donut-stat-value" style="color:#dd6b20">{duration:.2f}s</span>
+            <span class="donut-stat-value" style="color:#dd6b20">{total_duration:.2f}s</span>
           </div>
         </div>
       </div>
@@ -463,12 +468,12 @@ def build_html(results):
 
 
 def main():
-    results = load_results()
+    results, total_duration = load_results()
     if not results:
         print("No test_results.json found. Run pytest with conftest.py first.")
         sys.exit(1)
 
-    html = build_html(results)
+    html = build_html(results, total_duration)
     with open(REPORT_FILE, "w", encoding="utf-8") as f:
         f.write(html)
 
