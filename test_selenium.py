@@ -181,7 +181,11 @@ class TestUIDetails:
         assert "Tasks" in h2.text
 
     def test_page_has_no_js_errors(self, driver):
-        """Browser console should have no SEVERE JS errors."""
+        """Browser console should have no SEVERE JS errors (ignoring favicon 404)."""
         logs = driver.get_log("browser")
-        severe = [l for l in logs if l.get("level") == "SEVERE"]
+        severe = [
+            l for l in logs
+            if l.get("level") == "SEVERE"
+            and "favicon.ico" not in l.get("message", "")
+        ]
         assert severe == [], f"JS errors found: {severe}"
