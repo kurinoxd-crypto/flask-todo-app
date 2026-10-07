@@ -42,6 +42,10 @@ pipeline {
         stage('Selenium UI Tests') {
             steps {
                 script {
+                    // Clean old report files to ensure fresh results
+                    bat "del /F /Q selenium_report.html 2>nul || exit 0"
+                    bat "del /F /Q test_results.json 2>nul || exit 0"
+                    
                     bat "\"%PYTHON%\" start_flask.py"
                     try {
                         // Run pytest with conftest.py to generate test_results.json
@@ -56,12 +60,13 @@ pipeline {
             post {
                 always {
                     publishHTML(target: [
-                        allowMissing         : true,
-                        alwaysLinkToLastBuild: true,
+                        allowMissing         : false,
+                        alwaysLinkToLastBuild: false,
                         keepAll              : true,
                         reportDir            : '.',
                         reportFiles          : 'selenium_report.html',
-                        reportName           : 'Selenium Test Report'
+                        reportName           : 'Selenium Test Report',
+                        reportTitles         : 'Selenium Test Report'
                     ])
                 }
             }
