@@ -47,6 +47,7 @@ pipeline {
                         bat "\"%PYTHON%\" -m pytest test_selenium.py --html=selenium_report.html --self-contained-html -v"
                     } finally {
                         bat "\"%PYTHON%\" stop_flask.py || exit 0"
+                        bat "\"%PYTHON%\" generate_report.py || exit 0"
                     }
                 }
             }
