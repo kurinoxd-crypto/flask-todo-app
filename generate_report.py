@@ -469,8 +469,7 @@ def main():
     with open(REPORT_FILE, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"Report generated: {REPORT_FILE}")
-    os.startfile(REPORT_FILE)
+    print(f"✓ Report generated: {REPORT_FILE}")
 
 
 if __name__ == "__main__":

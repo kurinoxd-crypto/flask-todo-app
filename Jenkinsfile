@@ -44,9 +44,11 @@ pipeline {
                 script {
                     bat "\"%PYTHON%\" start_flask.py"
                     try {
-                        bat "\"%PYTHON%\" -m pytest test_selenium.py --html=selenium_report.html --self-contained-html -v"
+                        // Run pytest with conftest.py to generate test_results.json
+                        bat "\"%PYTHON%\" -m pytest test_selenium.py -v"
                     } finally {
                         bat "\"%PYTHON%\" stop_flask.py || exit 0"
+                        // Generate the custom HTML report from JSON results
                         bat "\"%PYTHON%\" generate_report.py || exit 0"
                     }
                 }
@@ -101,6 +103,16 @@ pipeline {
     post {
         success {
             echo "Pipeline succeeded - build #${env.BUILD_NUMBER} pushed to Docker Hub."
+            script {
+                // Auto-open the test report in default browser on successful build
+                def reportPath = "${env.WORKSPACE}\\selenium_report.html"
+                try {
+                    bat "start \"\" \"${reportPath}\""
+                    echo "✓ Opened test report in browser: ${reportPath}"
+                } catch (err) {
+                    echo "Could not auto-open browser: ${err.message}"
+                }
+            }
         }
         failure {
             echo "Pipeline failed. Check Console Output and the Selenium Test Report."
