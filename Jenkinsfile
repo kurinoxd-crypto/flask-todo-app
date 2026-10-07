@@ -42,14 +42,14 @@ pipeline {
         stage('Selenium UI Tests') {
             steps {
                 script {
-                    // Start Flask in background
-                    bat "start /B \"%PYTHON%\" app.py"
-                    sleep 5
+                    // Start Flask via helper script (uses same Python, waits until ready)
+                    bat "\"%PYTHON%\" start_flask.py"
 
                     try {
                         bat "\"%PYTHON%\" -m pytest test_selenium.py --html=selenium_report.html --self-contained-html -v"
                     } finally {
-                        bat "taskkill /F /IM python.exe /T || exit 0"
+                        // Stop Flask cleanly using its saved PID
+                        bat "\"%PYTHON%\" stop_flask.py || exit 0"
                     }
                 }
             }
