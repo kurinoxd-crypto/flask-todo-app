@@ -104,9 +104,45 @@ pipeline {
     post {
         success {
             echo "Pipeline succeeded - build #${env.BUILD_NUMBER} pushed to Docker Hub."
+            mail(
+                to:      'aminharith06.ha@gmail.com',
+                subject: "BUILD SUCCESS - Flask Todo App #${env.BUILD_NUMBER}",
+                body:    """
+Build #${env.BUILD_NUMBER} completed successfully.
+
+Commit  : ${env.GIT_COMMIT}
+Branch  : ${env.GIT_BRANCH}
+Job     : ${env.JOB_NAME}
+
+What happened:
+  - Unit tests      : PASSED (3/3)
+  - Selenium tests  : PASSED (10/10)
+  - Docker image    : kurinoxd/flask-todo-app:${env.BUILD_NUMBER} pushed to Docker Hub
+
+Selenium Test Report:
+  ${env.BUILD_URL}Selenium_20Test_20Report/
+
+Full Console Output:
+  ${env.BUILD_URL}console
+""".stripIndent()
+            )
         }
         failure {
             echo "Pipeline failed. Check Console Output and the Selenium Test Report."
+            mail(
+                to:      'aminharith06.ha@gmail.com',
+                subject: "BUILD FAILED - Flask Todo App #${env.BUILD_NUMBER}",
+                body:    """
+Build #${env.BUILD_NUMBER} FAILED.
+
+Commit  : ${env.GIT_COMMIT}
+Branch  : ${env.GIT_BRANCH}
+Job     : ${env.JOB_NAME}
+
+Check the console output to see what went wrong:
+  ${env.BUILD_URL}console
+""".stripIndent()
+            )
         }
         always {
             script {
