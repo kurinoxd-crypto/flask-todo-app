@@ -42,26 +42,22 @@ pipeline {
         stage('Selenium UI Tests') {
             steps {
                 script {
-                    // Clean old report files to ensure fresh results
-                    bat "del /F /Q selenium_report.html 2>nul || exit 0"
-                    bat "del /F /Q test_results.json 2>nul || exit 0"
-                    
                     bat "\"%PYTHON%\" start_flask.py"
                     try {
-                        // Run pytest with conftest.py to generate test_results.json
+                        // conftest.py writes test_results.json automatically
                         bat "\"%PYTHON%\" -m pytest test_selenium.py -v"
                     } finally {
                         bat "\"%PYTHON%\" stop_flask.py || exit 0"
-                        // Generate the custom HTML report from JSON results
-                        bat "\"%PYTHON%\" generate_report.py || exit 0"
                     }
+                    // Generate the custom HTML dashboard from test_results.json
+                    bat "\"%PYTHON%\" generate_report.py"
                 }
             }
             post {
                 always {
                     publishHTML(target: [
                         allowMissing         : false,
-                        alwaysLinkToLastBuild: false,
+                        alwaysLinkToLastBuild: true,
                         keepAll              : true,
                         reportDir            : '.',
                         reportFiles          : 'selenium_report.html',
