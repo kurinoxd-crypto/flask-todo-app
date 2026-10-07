@@ -75,7 +75,8 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat 'echo %DOCKER_PASS% | "%DOCKER%" login -u %DOCKER_USER% --password-stdin'
+                    // Use PowerShell to avoid bat echo adding trailing newline/space
+                    bat 'powershell -Command "$env:DOCKER_PASS | & \'%DOCKER%\' login -u $env:DOCKER_USER --password-stdin"'
                 }
                 echo 'Docker Hub login successful'
             }
