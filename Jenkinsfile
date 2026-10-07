@@ -14,7 +14,7 @@ pipeline {
 
     stages {
 
-        // ── 1. Checkout from GitHub ────────────────────────────────────────────
+        // ── 1. Pull latest code from GitHub ───────────────────────────────────
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/kurinoxd-crypto/flask-todo-app.git',
@@ -42,13 +42,10 @@ pipeline {
         stage('Selenium UI Tests') {
             steps {
                 script {
-                    // Start Flask via helper script (uses same Python, waits until ready)
                     bat "\"%PYTHON%\" start_flask.py"
-
                     try {
                         bat "\"%PYTHON%\" -m pytest test_selenium.py --html=selenium_report.html --self-contained-html -v"
                     } finally {
-                        // Stop Flask cleanly using its saved PID
                         bat "\"%PYTHON%\" stop_flask.py || exit 0"
                     }
                 }
@@ -67,7 +64,7 @@ pipeline {
             }
         }
 
-        // ── 5. Docker Hub login ────────────────────────────────────────────────
+        // ── 5. Log in to Docker Hub ────────────────────────────────────────────
         stage('Docker Login') {
             steps {
                 withCredentials([usernamePassword(
@@ -75,7 +72,6 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    // Use PowerShell to avoid bat echo adding trailing newline/space
                     bat 'powershell -Command "$env:DOCKER_PASS | & \'%DOCKER%\' login -u $env:DOCKER_USER --password-stdin"'
                 }
                 echo 'Docker Hub login successful'
@@ -96,33 +92,17 @@ pipeline {
                 bat "\"%DOCKER%\" push ${IMAGE_TAG}"
                 bat "\"%DOCKER%\" tag ${IMAGE_TAG} ${IMAGE_NAME}:latest"
                 bat "\"%DOCKER%\" push ${IMAGE_NAME}:latest"
-                echo "Pushed ${IMAGE_TAG} and ${IMAGE_NAME}:latest"
-            }
-        }
-
-        // ── 8. Deploy to EKS (skipped until kubeconfig is set up) ─────────────
-        stage('Deploy to EKS') {
-            when {
-                expression { return fileExists("$WORKSPACE\\kubeconfig") }
-            }
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig-credentials-id', variable: 'KUBECONFIG')]) {
-                    bat """
-                        powershell -Command "(Get-Content deployment.yaml) -replace 'image: .*flask.*', 'image: ${IMAGE_TAG}' | Set-Content deployment.yaml"
-                        kubectl apply -f deployment.yaml
-                        kubectl rollout status deployment/flask-app-deployment-prod --timeout=120s
-                    """
-                }
+                echo "Pushed ${IMAGE_TAG} and ${IMAGE_NAME}:latest to Docker Hub"
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline succeeded - build #${env.BUILD_NUMBER} is live."
+            echo "Pipeline succeeded - build #${env.BUILD_NUMBER} pushed to Docker Hub."
         }
         failure {
-            echo "Pipeline failed. Check Console Output and the Selenium Test Report for details."
+            echo "Pipeline failed. Check Console Output and the Selenium Test Report."
         }
         always {
             script {
