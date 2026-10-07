@@ -5,6 +5,11 @@ pipeline {
         DOCKERHUB_USERNAME = 'kurinoxd'
         IMAGE_NAME         = "${DOCKERHUB_USERNAME}/flask-todo-app"
         IMAGE_TAG          = "${IMAGE_NAME}:${env.BUILD_NUMBER}"
+
+        // Full paths because Jenkins service doesn't inherit your user PATH
+        PYTHON = 'C:\\Users\\harit\\AppData\\Local\\Programs\\Python\\Python311\\python.exe'
+        PIP    = 'C:\\Users\\harit\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\pip.exe'
+        DOCKER = 'C:\\Users\\harit\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
     }
 
     stages {
@@ -22,14 +27,14 @@ pipeline {
         // ── 2. Install Python dependencies ────────────────────────────────────
         stage('Setup') {
             steps {
-                bat "pip install -r requirements.txt"
+                bat "\"%PIP%\" install -r requirements.txt"
             }
         }
 
         // ── 3. Unit tests ──────────────────────────────────────────────────────
         stage('Unit Tests') {
             steps {
-                bat "pytest test_app.py -v --tb=short"
+                bat "\"%PYTHON%\" -m pytest test_app.py -v --tb=short"
             }
         }
 
@@ -37,15 +42,12 @@ pipeline {
         stage('Selenium UI Tests') {
             steps {
                 script {
-                    bat "start /B python app.py"
-                    sleep 3
+                    // Start Flask in background
+                    bat "start /B \"%PYTHON%\" app.py"
+                    sleep 5
 
                     try {
-                        bat """
-                            set HEADLESS=true
-                            set APP_URL=http://localhost:5000
-                            pytest test_selenium.py --html=selenium_report.html --self-contained-html -v
-                        """
+                        bat "\"%PYTHON%\" -m pytest test_selenium.py --html=selenium_report.html --self-contained-html -v"
                     } finally {
                         bat "taskkill /F /IM python.exe /T || exit 0"
                     }
@@ -54,7 +56,7 @@ pipeline {
             post {
                 always {
                     publishHTML(target: [
-                        allowMissing         : false,
+                        allowMissing         : true,
                         alwaysLinkToLastBuild: true,
                         keepAll              : true,
                         reportDir            : '.',
@@ -73,7 +75,7 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                    bat 'echo %DOCKER_PASS% | "%DOCKER%" login -u %DOCKER_USER% --password-stdin'
                 }
                 echo 'Docker Hub login successful'
             }
@@ -82,29 +84,25 @@ pipeline {
         // ── 6. Build Docker image ──────────────────────────────────────────────
         stage('Build Docker Image') {
             steps {
-                bat "docker build -t ${IMAGE_TAG} ."
-                echo "Built image: ${IMAGE_TAG}"
-                bat "docker images"
+                bat "\"%DOCKER%\" build -t ${IMAGE_TAG} ."
+                bat "\"%DOCKER%\" images"
             }
         }
 
         // ── 7. Push to Docker Hub ──────────────────────────────────────────────
         stage('Push Docker Image') {
             steps {
-                bat "docker push ${IMAGE_TAG}"
-                bat "docker tag ${IMAGE_TAG} ${IMAGE_NAME}:latest"
-                bat "docker push ${IMAGE_NAME}:latest"
+                bat "\"%DOCKER%\" push ${IMAGE_TAG}"
+                bat "\"%DOCKER%\" tag ${IMAGE_TAG} ${IMAGE_NAME}:latest"
+                bat "\"%DOCKER%\" push ${IMAGE_NAME}:latest"
                 echo "Pushed ${IMAGE_TAG} and ${IMAGE_NAME}:latest"
             }
         }
 
-        // ── 8. Deploy to AWS EKS (skipped until kubeconfig is configured) ──────
+        // ── 8. Deploy to EKS (skipped until kubeconfig is set up) ─────────────
         stage('Deploy to EKS') {
             when {
-                // Only run this stage if the kubeconfig file actually exists
-                expression {
-                    return fileExists("$WORKSPACE\\kubeconfig")
-                }
+                expression { return fileExists("$WORKSPACE\\kubeconfig") }
             }
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-credentials-id', variable: 'KUBECONFIG')]) {
@@ -114,7 +112,6 @@ pipeline {
                         kubectl rollout status deployment/flask-app-deployment-prod --timeout=120s
                     """
                 }
-                echo "Deployed ${IMAGE_TAG} to EKS cluster"
             }
         }
     }
@@ -128,9 +125,10 @@ pipeline {
         }
         always {
             script {
-                // Only clean up the image if it was actually built
-                if (env.IMAGE_TAG) {
-                    bat "docker rmi ${IMAGE_TAG} || exit 0"
+                try {
+                    bat "\"%DOCKER%\" rmi ${IMAGE_TAG} || exit 0"
+                } catch (err) {
+                    echo "Image cleanup skipped: ${err.message}"
                 }
             }
         }
