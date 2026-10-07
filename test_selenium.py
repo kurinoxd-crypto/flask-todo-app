@@ -20,11 +20,17 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 # ── Config ────────────────────────────────────────────────────────────────────
 APP_URL = os.environ.get("APP_URL", "http://localhost:5000")
-HEADLESS = os.environ.get("HEADLESS", "true").lower() == "true"   # headless in CI
+HEADLESS = os.environ.get("HEADLESS", "true").lower() == "true"
+
+# ChromeDriver placed here manually to avoid webdriver-manager SYSTEM account bug
+# Falls back to PATH if the file doesn't exist (e.g. on Linux CI)
+CHROMEDRIVER_PATH = os.environ.get(
+    "CHROMEDRIVER_PATH",
+    r"C:\ProgramData\Jenkins\chromedriver\chromedriver-win32\chromedriver.exe"
+)
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -37,8 +43,14 @@ def driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1280,800")
+    options.add_argument("--disable-gpu")
 
-    service = Service(ChromeDriverManager().install())
+    if os.path.exists(CHROMEDRIVER_PATH):
+        service = Service(executable_path=CHROMEDRIVER_PATH)
+    else:
+        # Fallback: let Selenium find chromedriver on PATH
+        service = Service()
+
     drv = webdriver.Chrome(service=service, options=options)
     drv.implicitly_wait(5)
     yield drv
