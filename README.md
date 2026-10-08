@@ -1,4 +1,4 @@
-# Flask Todo App — Jenkins CI/CD Pipeline BY HARITH AMIN
+# Flask Todo App — Jenkins CI/CD Pipeline
 
 A Flask todo web app with a fully automated CI/CD pipeline using Jenkins, Selenium, and Docker.
 
