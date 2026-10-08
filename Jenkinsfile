@@ -85,18 +85,24 @@ pipeline {
         // ── 6. Build Docker image ──────────────────────────────────────────────
         stage('Build Docker Image') {
             steps {
-                bat "\"%DOCKER%\" build -t ${IMAGE_TAG} ."
+                bat "set DOCKER_BUILDKIT=1 && \"%DOCKER%\" build -t ${IMAGE_TAG} ."
                 bat "\"%DOCKER%\" images"
             }
         }
 
-        // ── 7. Push to Docker Hub ──────────────────────────────────────────────
+        // ── 7. Push to Docker Hub (with retry for flaky network) ──────────────
         stage('Push Docker Image') {
             steps {
-                bat "\"%DOCKER%\" push ${IMAGE_TAG}"
-                bat "\"%DOCKER%\" tag ${IMAGE_TAG} ${IMAGE_NAME}:latest"
-                bat "\"%DOCKER%\" push ${IMAGE_NAME}:latest"
-                echo "Pushed ${IMAGE_TAG} and ${IMAGE_NAME}:latest to Docker Hub"
+                script {
+                    retry(3) {
+                        bat "\"%DOCKER%\" push ${IMAGE_TAG}"
+                    }
+                    bat "\"%DOCKER%\" tag ${IMAGE_TAG} ${IMAGE_NAME}:latest"
+                    retry(3) {
+                        bat "\"%DOCKER%\" push ${IMAGE_NAME}:latest"
+                    }
+                    echo "Pushed ${IMAGE_TAG} and ${IMAGE_NAME}:latest to Docker Hub"
+                }
             }
         }
     }
