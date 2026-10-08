@@ -85,7 +85,7 @@ pipeline {
         // ── 6. Build Docker image ──────────────────────────────────────────────
         stage('Build Docker Image') {
             steps {
-                bat "set DOCKER_BUILDKIT=1 && \"%DOCKER%\" build -t ${IMAGE_TAG} ."
+                bat "\"%DOCKER%\" build -t ${IMAGE_TAG} ."
                 bat "\"%DOCKER%\" images"
             }
         }
